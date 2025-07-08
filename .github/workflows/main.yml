@@ -11,12 +11,15 @@ jobs:
 
     steps:
       - name: Download and Run Setup
+        shell: pwsh
         run: |
           Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ali23gj/RDP/main/Downloads.bat" -OutFile "Downloads.bat"
-          cmd /c Downloads.bat
+          ./Downloads.bat
 
       - name: Show Access Info
+        shell: cmd
         run: cmd /c show.bat
 
       - name: Keep Service Running
+        shell: cmd
         run: cmd /c loop.bat
