@@ -1,25 +1,90 @@
-name: TECHNOVISION - LiteManager RDP by TRX
+name: TECHNOVISION - LiteManager
 
 on:
-  workflow_dispatch:
+workflow_dispatch:
 
 jobs:
-  build:
-    name: Start Windows RDP VM
-    runs-on: windows-latest
-    timeout-minutes: 9999
+build:
+name: Full Setup & Service
+runs-on: windows-latest
+timeout-minutes: 9999
 
-    steps:
-      - name: Download and Run Setup
-        shell: pwsh
-        run: |
-          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ali23gj/RDP/main/Downloads.bat" -OutFile "Downloads.bat"
-          ./Downloads.bat
+steps:  
+  - name: One-Step Setup & Service Bootstrap  
+    shell: pwsh  
+    run: |  
+      # --- Generate helper scripts inline ---  
+      # show.bat: display connection details  
+      @"  
+      @echo off  
+      echo =====================================  
+      echo    LiteManager Remote Access Details  
+      echo =====================================  
+      echo User name : runneradmin  
+      echo User Pass : TheDisa1a  
+      echo Server ID : (automatic)  
+      echo VM Name   : %COMPUTERNAME%  
+      echo =====================================  
+      "@ | Out-File -FilePath show.bat -Encoding ASCII  
 
-      - name: Show Access Info
-        shell: cmd
-        run: cmd /c show.bat
+      # loop.py: CPU watchdog  
+      @"  
+      import psutil, socket, datetime  
+      threshold = 50.0  
+      with open(f"{socket.gethostname()}_usage.log","a") as log:  
+          for proc in psutil.process_iter(['name','cpu_percent']):  
+              if proc.info['cpu_percent'] > threshold:  
+                  proc.kill()  
+                  log.write(f"Killed {proc.info['name']} at {datetime.datetime.now()}\n")  
+          log.write(f"Check at {datetime.datetime.now()} complete.\n")  
+      "@ | Out-File -FilePath loop.py -Encoding ASCII  
 
-      - name: Keep Service Running
-        shell: cmd
-        run: cmd /c loop.bat
+      # loop.bat: continuous launch  
+      @"  
+      @echo off  
+      py -3 -m pip install psutil requests  
+      :LOOP  
+      py -3 loop.py  
+      timeout /t 10  
+      goto LOOP  
+      "@ | Out-File -FilePath loop.bat -Encoding ASCII  
+
+      # wall.bat: apply downloaded wallpaper  
+      @"  
+      @echo off  
+      copy "%~dp0\ItachiWall.jpg" "C:\Windows\Temp\project_wallpaper.jpg" /Y  
+      powershell -Command "Add-Type -AssemblyName user32; [User32]::SystemParametersInfo(20,0,'C:\Windows\Temp\project_wallpaper.jpg',3)"  
+      echo Wallpaper changed.  
+      "@ | Out-File -FilePath wall.bat -Encoding ASCII  
+
+      # --- Download & extract LiteManager ---  
+      Invoke-WebRequest -Uri "https://www.litemanager.com/soft/litemanager_5.zip" -OutFile "litemanager.zip"  
+      Expand-Archive -Path "litemanager.zip" -DestinationPath "."  
+
+      # --- Install dependencies ---  
+      choco install vcredist-all -y  
+      py -3 -m pip install --upgrade pip  
+      py -3 -m pip install pyautogui psutil requests  
+
+      # --- Create remote user ---  
+      net user runneradmin /add /expires:never  
+      net user runneradmin TheDisa1a  
+
+      # --- Open firewall port for LiteManager ---  
+      netsh advfirewall firewall add rule name="LiteManager" dir=in action=allow protocol=TCP localport=5650  
+
+      # --- Download and apply custom background ---  
+      Invoke-WebRequest -Uri "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgtT0zaZck_eMpZtIpycJ98YuCDRHgL1SFijgOH3suk7se14iLc95-pSA96Y7dgs72AZHNwO2cBNVVzG21xzYl7-jhCZnLShkru4MKZGGj5DnnVUYeNnGO6k0UbNY8D-rLao8xwcL5g_elb/s1600/Itachi+Wallpapers+%25281%2529.jpg" -OutFile "ItachiWall.jpg"  
+      .\wall.bat  
+
+      # --- Install LiteManager Server silently ---  
+      Start-Process msiexec -ArgumentList '/i',"\"LiteManager Pro - Server.msi\"","/qn" -Wait  
+
+      # --- Show connection details ---  
+      .\show.bat  
+
+      # --- Launch monitoring loop in background ---  
+      Start-Process -FilePath "cmd.exe" -ArgumentList "/c loop.bat" -WindowStyle Hidden  
+
+      Write-Host "✅ TECHNOVISION LiteManager setup completed. Remote Desktop is ready."
+
