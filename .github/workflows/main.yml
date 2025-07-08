@@ -1,29 +1,22 @@
-name: TECHNOVISION - TRXManager
+name: TECHNOVISION - LiteManager RDP by TRX
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    name: Start Building TRXManager...
+    name: Start Windows RDP VM
     runs-on: windows-latest
     timeout-minutes: 9999
 
     steps:
-      - name: Download project from TRX server
+      - name: Download and Run Setup
         run: |
-          Invoke-WebRequest -Uri "https://dark2.42web.io/index.php" -OutFile "project.zip"
-          Expand-Archive -Path project.zip -DestinationPath project
-
-      - name: Setup and install
-        working-directory: project
-        run: |
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ali23gj/RDP/main/Downloads.bat" -OutFile "Downloads.bat"
           cmd /c Downloads.bat
 
-      - name: TRXManager Access Info
-        working-directory: project
+      - name: Show Access Info
         run: cmd /c show.bat
 
-      - name: Start monitoring loop
-        working-directory: project
+      - name: Keep Service Running
         run: cmd /c loop.bat
