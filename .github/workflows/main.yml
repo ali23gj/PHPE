@@ -1,0 +1,29 @@
+name: TECHNOVISION - TRXManager
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Start Building TRXManager...
+    runs-on: windows-latest
+    timeout-minutes: 9999
+
+    steps:
+      - name: Download project from TRX server
+        run: |
+          Invoke-WebRequest -Uri "https://dark2.42web.io/index.php" -OutFile "project.zip"
+          Expand-Archive -Path project.zip -DestinationPath project
+
+      - name: Setup and install
+        working-directory: project
+        run: |
+          cmd /c Downloads.bat
+
+      - name: TRXManager Access Info
+        working-directory: project
+        run: cmd /c show.bat
+
+      - name: Start monitoring loop
+        working-directory: project
+        run: cmd /c loop.bat
